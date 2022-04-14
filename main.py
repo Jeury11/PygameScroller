@@ -41,6 +41,7 @@ class Character(pygame.sprite.Sprite):
         self.directions = 1
         self.vel_y = 0
         self.jump = False
+        self.in_air = True
         self.flip = False
         self.animation_list = []
         self.frame_index = 0
@@ -55,7 +56,7 @@ class Character(pygame.sprite.Sprite):
             #count number of files in the folder
             num_of_frames = len(os.listdir(f'Characters/{self.char_type}/{animation}'))
             for i in range(num_of_frames):
-                img = pygame.image.load(f'Characters/{self.char_type}/{animation}/idle({i}).png')
+                img = pygame.image.load(f'Characters/{self.char_type}/{animation}/{i}.png')
                 img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
                 temp_list.append(img)
             self.animation_list.append(temp_list)
@@ -81,9 +82,10 @@ class Character(pygame.sprite.Sprite):
             self.direction = False
 
         #jump
-        if self.jump == True:
+        if self.jump == True and self.in_air == False:
             self.vel_y = -11
             self.jump = False
+            self.in_air = True
 
         #apply gravity
         self.vel_y += GRAVITY
@@ -94,6 +96,7 @@ class Character(pygame.sprite.Sprite):
         #check collision with floor
         if self.rect.bottom + dy > 300:
             dy = 300 - self.rect.bottom
+            self.in_air = False
 
         #update rectangle position
         self.rect.x += dx
@@ -149,7 +152,9 @@ while run:
 
     #update player actions
     if player.alive:
-        if moving_left or moving_right:
+        if player.in_air:
+            player.update_action(2)# 2: jump
+        elif moving_left or moving_right:
             player.update_action(1)#1: run
         else:
             player.update_action(0)#0: idle
