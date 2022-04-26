@@ -20,6 +20,12 @@ GRAVITY = 0.75
 #define player action variables
 moving_left = False
 moving_right = False
+swing = False
+
+
+#load images
+#bullet
+slash_img = pygame.image.load('Characters/Effects/0.png').convert_alpha()
 
 
 #define coulers
@@ -56,7 +62,7 @@ class Character(pygame.sprite.Sprite):
             #count number of files in the folder
             num_of_frames = len(os.listdir(f'Characters/{self.char_type}/{animation}'))
             for i in range(num_of_frames):
-                img = pygame.image.load(f'Characters/{self.char_type}/{animation}/{i}.png')
+                img = pygame.image.load(f'Characters/{self.char_type}/{animation}/{i}.png').convert_alpha()
                 img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
                 temp_list.append(img)
             self.animation_list.append(temp_list)
@@ -83,7 +89,7 @@ class Character(pygame.sprite.Sprite):
 
         #jump
         if self.jump == True and self.in_air == False:
-            self.vel_y = -11
+            self.vel_y = -15
             self.jump = False
             self.in_air = True
 
@@ -105,7 +111,7 @@ class Character(pygame.sprite.Sprite):
 
     def update_animation(self):
         #update animation
-        ANIMATION_COOLDOWN = 100
+        ANIMATION_COOLDOWN = 80
         #update image depending on current frame
         self.image = self.animation_list[self.action][self.frame_index]
         #check if enough time has passed since the last update
@@ -133,6 +139,22 @@ class Character(pygame.sprite.Sprite):
 
 
 
+class Slash(pygame.sprite.Sprite):
+    def __init__(self, x, y, direction):
+        pygame.sprite.Sprite.__innit__(self)
+        self.speed = 10
+        self.image = slash_img
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direction = direction
+
+
+
+#create sprite groups
+slash_group = pygame.sprite.Group()
+
+
+
 player = Character('Player', 200, 200, 3, 5)
 enemy = Character('Player', 400, 200, 3, 5)
 
@@ -149,9 +171,17 @@ while run:
     player.draw()
     enemy.draw()
 
+    #update nd draw groups
+    slash_group.update
+    slash_group.draw(screen)
+
 
     #update player actions
     if player.alive:
+        #swing sword
+        if swing:
+            slash = Slash(player.rect.centerx, player.rect.centery, player.directions)
+            slash_group.add(slash)
         if player.in_air:
             player.update_action(2)# 2: jump
         elif moving_left or moving_right:
@@ -171,6 +201,8 @@ while run:
                 moving_left = True
             if event.key == pygame.K_d:
                 moving_right = True
+            if event.key == pygame.K_SPACE:
+                swing = True
             if event.key == pygame.K_w and player.alive:
                 player.jump = True
             if event.key == pygame.K_ESCAPE:
@@ -183,6 +215,8 @@ while run:
                 moving_left = False
             if event.key == pygame.K_d:
                 moving_right = False
+            if event.key == pygame.K_SPACE:
+                swing = False
 
 
 
