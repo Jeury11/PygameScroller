@@ -25,9 +25,9 @@ swing = False
 
 #load images
 #bullet
-slash_img = pygame.image.load('Characters/Effects/0.png').convert_alpha()
+slash_img = pygame.image.load('Characters/Effects/Slash/0.png').convert_alpha()
 #grenade
-slash_img = pygame.image.load('Characters/Effects/0.png').convert_alpha()
+grenade_img = pygame.image.load('Characters/Effects/Grenade/0.png').convert_alpha()
 
 
 #define coulers
