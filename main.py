@@ -26,6 +26,8 @@ swing = False
 #load images
 #bullet
 slash_img = pygame.image.load('Characters/Effects/0.png').convert_alpha()
+#grenade
+slash_img = pygame.image.load('Characters/Effects/0.png').convert_alpha()
 
 
 #define coulers
@@ -39,12 +41,17 @@ def draw_bg():
 #
 
 class Character(pygame.sprite.Sprite):
-    def __init__(self, char_type, x, y, scale, speed):
+    def __init__(self, char_type, x, y, scale, speed, ammo):
         pygame.sprite.Sprite.__init__(self)
         self.alive = True
         self.char_type = char_type
         self.speed = speed
-        self.directions = 1
+        self.ammo = ammo
+        self.start_ammo = ammo
+        self.swing_cooldown = 0
+        self.health = 100
+        self.max_health = self.health
+        self.direction = 1
         self.vel_y = 0
         self.jump = False
         self.in_air = True
@@ -55,7 +62,7 @@ class Character(pygame.sprite.Sprite):
         self.update_time = pygame.time.get_ticks()
 
         #load all images for the players
-        animation_types = ['Idle', 'Run', 'Jump']
+        animation_types = ['Idle', 'Run', 'Jump', 'Death']
         for animation in animation_types:
             #reset temporary list of images
             temp_list = []
@@ -72,6 +79,14 @@ class Character(pygame.sprite.Sprite):
             self.rect.center = (x, y)
 
 
+    def update(self):
+        self.update_animation()
+        self.check_alive()
+        #update cooldown
+        if self.swing_cooldown > 0:
+            self.swing_cooldown -= 1
+
+
     def move(self, moving_left, moving_right):
         #reset movement variables
         dx = 0
@@ -85,7 +100,7 @@ class Character(pygame.sprite.Sprite):
         if moving_right:
             dx = self.speed
             self.flip = False
-            self.direction = False
+            self.direction = 1
 
         #jump
         if self.jump == True and self.in_air == False:
@@ -109,6 +124,15 @@ class Character(pygame.sprite.Sprite):
         self.rect.y += dy
 
 
+    def swing(self):
+        if self.swing_cooldown == 0 and self.ammo > 0:
+            self.swing_cooldown = 20
+            slash = Slash(self.rect.centerx + (0.99 * self.rect.size[0] * self.direction), self.rect.centery, self.direction)
+            slash_group.add(slash)
+            #reduce ammo
+            self.ammo -= 1
+
+
     def update_animation(self):
         #update animation
         ANIMATION_COOLDOWN = 80
@@ -120,7 +144,10 @@ class Character(pygame.sprite.Sprite):
             self.frame_index += 1
         #if the animation has run out then reset nack to the start
         if self.frame_index >= len(self.animation_list[self.action]):
-            self.frame_index = 0
+            if self.action == 3:
+                self.frame_index = len(self.animation_list[self.action]) - 1
+            else:
+                self.frame_index = 0
 
 
 
@@ -134,29 +161,65 @@ class Character(pygame.sprite.Sprite):
 
 
 
+    def check_alive(self):
+        if self.health <= 0:
+            self.health = 0
+            self.speed = 0
+            self.alive = False
+            self.update_action(3)
+
     def draw(self):
         screen.blit(pygame.transform.flip(self.image, self.flip, False),self.rect)
 
 
 
+
 class Slash(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
-        pygame.sprite.Sprite.__innit__(self)
+        pygame.sprite.Sprite.__init__(self)
         self.speed = 10
         self.image = slash_img
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
         self.direction = direction
 
+    def update(self):
+        #move slash
+        self.rect.x += (self.direction * self.speed)
+        #check if bullet has gone off screen
+        if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
+            self.kill()
 
+        #check collision with characters
+        if pygame.sprite.spritecollide(player, slash_group, False):
+            if player.alive:
+                player.health -= 5
+                self.kill()
+        if pygame.sprite.spritecollide(enemy, slash_group, False):
+            if enemy.alive:
+                enemy.health -= 25
+                self.kill()
+
+
+
+class Grenade(pygame.sprite.Sprite):
+    def __init__(self, x, y, direction):
+        pygame.sprite.Sprite.__init__(self)
+        self.timer = 100
+        self.vel_y = -11
+        self.speed = 7
+        self.image = grenade_img
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direction = direction
 
 #create sprite groups
 slash_group = pygame.sprite.Group()
 
 
 
-player = Character('Player', 200, 200, 3, 5)
-enemy = Character('Player', 400, 200, 3, 5)
+player = Character('Player', 200, 200, 3, 5, 200)
+enemy = Character('Enemy', 400, 200, 3, 5, 20)
 
 
 
@@ -167,12 +230,14 @@ while run:
 
     draw_bg()
 
-    player.update_animation()
+    player.update()
     player.draw()
+
+    enemy.update()
     enemy.draw()
 
     #update nd draw groups
-    slash_group.update
+    slash_group.update()
     slash_group.draw(screen)
 
 
@@ -180,8 +245,7 @@ while run:
     if player.alive:
         #swing sword
         if swing:
-            slash = Slash(player.rect.centerx, player.rect.centery, player.directions)
-            slash_group.add(slash)
+            player.swing()
         if player.in_air:
             player.update_action(2)# 2: jump
         elif moving_left or moving_right:
