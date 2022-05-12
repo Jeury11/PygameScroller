@@ -32,9 +32,9 @@ slash_img = pygame.image.load('Characters/Effects/Slash/0.png').convert_alpha()
 #grenade
 grenade_img = pygame.image.load('Characters/Effects/Grenade/0.png').convert_alpha()
 #pick up boxes
-heal_box_img = pygame.image.load('Characters/Effects/Grenade/0.png').convert_alpha()
-heal_box_img = pygame.image.load('Characters/Effects/Grenade/0.png').convert_alpha()
-heal_box_img = pygame.image.load('Characters/Effects/Grenade/0.png').convert_alpha()
+health_box_img = pygame.image.load('Characters/Effects/Items/Health_box.png').convert_alpha()
+ammo_box_img = pygame.image.load('Characters/Effects/Items/Ammo_box.png').convert_alpha()
+grenade_box_img = pygame.image.load('Characters/Effects/Items/Grenade_box.png').convert_alpha()
 item_boxes = {
     'Health'    : health_box_img,
     'Ammo'      : ammo_box_img,
@@ -45,12 +45,21 @@ item_boxes = {
 #define coulers
 BG = (144, 201, 120)
 RED = (255, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+BLACK = (0, 0, 0)
+
+#define font
+font = pygame.font.SysFont('Futura', 30)
+
+def draw_text(text, font, text_col, x, y):
+    img = font.render(text, True, text_col)
+    screen.blit(img, (x, y))
+
 
 def draw_bg():
     screen.fill(BG)
     pygame.draw.line(screen, RED, (0, 300), (SCREEN_WIDTH, 300))
-
-#
 
 class Character(pygame.sprite.Sprite):
     def __init__(self, char_type, x, y, scale, speed, ammo, grenades):
@@ -196,6 +205,38 @@ class ItemBox(pygame.sprite.Sprite):
         self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
 
 
+    def update(self):
+        #check if the player has picked up box
+        if pygame.sprite.collide_rect(self, player):
+            #check what kind of box it was
+            if self.item_type == 'Health':
+                player.health += 25
+                if player.health > player.max_health:
+                    player.health = player.max_health
+            elif self.item_type == 'Ammo':
+                player.ammo += 15
+            elif self.item_type == 'Grenade':
+                player.grenades += 3
+            #delete the item box
+            self.kill()
+
+
+class HealthBar():
+    def __init__(self, x, y, health, max_health):
+        self.x = x
+        self.y = y
+        self.health = health
+        self.max_health = max_health
+
+    def draw(self, health):
+        #update with new health
+        self.health = health
+        #calculate health ratio
+        ratio = self.health / self.max_health
+        pygame.draw.rect(screen, BLACK, (self.x - 2, self.y - 2, 154, 24))
+        pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
+        pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
+
 
 class Slash(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
@@ -309,9 +350,24 @@ enemy_group = pygame.sprite.Group()
 slash_group = pygame.sprite.Group()
 grenade_group = pygame.sprite.Group()
 explosion_group = pygame.sprite.Group()
+item_box_group = pygame.sprite.Group()
 
 
-player = Character('Player', 200, 200, 3, 5, 200, 1000)
+
+#temp - create item boxes
+item_box = ItemBox('Health', 100, 200)
+item_box_group.add(item_box)
+item_box = ItemBox('Ammo', 500, 200)
+item_box_group.add(item_box)
+item_box = ItemBox('Grenade', 300, 200)
+item_box_group.add(item_box)
+
+
+
+player = Character('Player', 200, 200, 3, 5, 10, 5)
+health_bar = HealthBar(10, 10, player.health, player.health)
+
+
 enemy = Character('Enemy', 400, 200, 3, 5, 20, 0)
 enemy2 = Character('Enemy', 300, 300, 3, 5, 20, 0)
 enemy_group.add(enemy)
@@ -324,6 +380,17 @@ while run:
     clock.tick(FPS)
 
     draw_bg()
+    #show player health
+    health_bar.draw(player.health)
+    #show ammo
+    draw_text('AMMO: ', font, WHITE, 10, 35)
+    for x in range(player.ammo):
+        screen.blit(slash_img, (120 + (x * 15), 30))
+    #show grenades
+    draw_text('Grenades: ', font, WHITE, 10, 70)
+    for x in range(player.grenades):
+        screen.blit(grenade_img, (150 + (x * 20), 75))
+
 
     player.update()
     player.draw()
@@ -336,9 +403,11 @@ while run:
     slash_group.update()
     grenade_group.update()
     explosion_group.update()
+    item_box_group.update()
     slash_group.draw(screen)
     grenade_group.draw(screen)
     explosion_group.draw(screen)
+    item_box_group.draw(screen)
 
 
     #update player actions
