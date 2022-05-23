@@ -40,6 +40,7 @@ moving_right = False
 swing = False
 grenade = False
 grenade_thrown = False
+shoot = False
 
 
 #load music and sounds
@@ -72,6 +73,8 @@ for x in range(TILE_TYPES):
     img_list.append(img)
 # bullet
 slash_img = pygame.image.load('Characters/Effects/Slash/0.png').convert_alpha()
+# arrow
+arrow_img = pygame.image.load('Characters/Effects/Arrow/0.png').convert_alpha()
 # grenade
 grenade_img = pygame.image.load('Characters/Effects/Grenade/0.png').convert_alpha()
 # pick up boxes
@@ -115,6 +118,7 @@ def draw_bg():
 def reset_level():
     enemy_group.empty()
     slash_group.empty()
+    arrow_group.empty()
     grenade_group.empty()
     explosion_group.empty()
     item_box_group.empty()
@@ -142,6 +146,7 @@ class Character(pygame.sprite.Sprite):
         self.ammo = ammo
         self.start_ammo = ammo
         self.swing_cooldown = 10
+        self.shoot_cooldown = 10
         self.grenades = grenades
         self.health = 100
         self.max_health = self.health
@@ -161,7 +166,7 @@ class Character(pygame.sprite.Sprite):
         self.idling_counter = 0
 
         # load all images for the players
-        animation_types = ['Idle', 'Run', 'Jump', 'Death']
+        animation_types = ['Idle', 'Run', 'Jump', 'Death', 'Attack']
         for animation in animation_types:
             # reset temporary list of images
             temp_list = []
@@ -173,11 +178,11 @@ class Character(pygame.sprite.Sprite):
                 temp_list.append(img)
             self.animation_list.append(temp_list)
 
-            self.image = self.animation_list[self.action][self.frame_index]
-            self.rect = self.image.get_rect()
-            self.rect.center = (x, y)
-            self.width = self.image.get_width()
-            self.height = self.image.get_height()
+        self.image = self.animation_list[self.action][self.frame_index]
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.width = self.image.get_width()
+        self.height = self.image.get_height()
 
 
     def update(self):
@@ -276,12 +281,21 @@ class Character(pygame.sprite.Sprite):
     def swing(self):
         if self.swing_cooldown == 0 and self.ammo > 0:
             self.swing_cooldown = 20
-            slash = Slash(self.rect.centerx + (0.99 * self.rect.size[0] * self.direction), self.rect.centery, self.direction)
+            slash = Slash(self.rect.centerx + (1.25 * self.rect.size[0] * self.direction), self.rect.centery, self.direction)
             slash_group.add(slash)
             # reduce ammo
             self.ammo -= 1
             shot_fx.play()
 
+    def shoot(self):
+        if self.shoot_cooldown == 0 and self.ammo > 0:
+            self.shoot_cooldown = 20
+            arrow = Arrow(self.rect.centerx + (1.25 * self.rect.size[0] * self.direction), self.rect.centery, self.direction)
+            arrow_group.add(arrow)
+            # reduce arrow ammo
+            self.ammo -= 1
+            shot_fx.play()
+        print(arrow_group)
 
     def ai(self):
         if self.alive and player.alive:
@@ -292,7 +306,7 @@ class Character(pygame.sprite.Sprite):
             #check if the ai in near the player
             if self.vision.colliderect(player.rect):
                 #stop running and face the player
-                self.update_action(0)#0: idle
+                self.update_action(4)#0: shooting
                 #shoot
                 self.swing()
             else:
@@ -519,6 +533,39 @@ class Slash(pygame.sprite.Sprite):
 
 
 
+class Arrow(pygame.sprite.Sprite):
+    def __init__(self, x, y, direction):
+        pygame.sprite.Sprite.__init__(self)
+        self.speed = 10
+        self.image = arrow_img
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direction = direction
+
+    def update(self):
+        # move arrow
+        self.rect.x += (self.direction * self.speed) + screen_scroll
+        # check if bullet has gone off screen
+        if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
+            self.kill()
+            # check for collision with level
+        for tile in world.obstacle_list:
+            if tile[1].colliderect(self.rect):
+                self.kill()
+
+        # check collision with characters
+        if pygame.sprite.spritecollide(player, arrow_group, False):
+            if player.alive:
+                player.health -= 5
+                self.kill()
+        for enemy in enemy_group:
+            if pygame.sprite.spritecollide(enemy, arrow_group, False):
+                if enemy.alive:
+                    enemy.health -= 25
+                    self.kill()
+
+
+
 class Grenade(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
         pygame.sprite.Sprite.__init__(self)
@@ -655,13 +702,14 @@ death_fade = ScreenFade(2, PINK, 4)
 
 
 #create buttons
-start_button = button.Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, start_img, 1)
-exit_button = button.Button(SCREEN_WIDTH // 2 - 110, SCREEN_HEIGHT // 2 + 50, exit_img, 1)
-restart_button = button.Button(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50, restart_img, 2)
+start_button = button.Button(SCREEN_WIDTH // 2 - 110, SCREEN_HEIGHT // 2 - 150, start_img, .40)
+exit_button = button.Button(SCREEN_WIDTH // 2 - 95, SCREEN_HEIGHT // 2 + 50, exit_img, .35)
+restart_button = button.Button(SCREEN_WIDTH // 2 - 40, SCREEN_HEIGHT // 2 - 50, restart_img, .50)
 
 # create sprite groups
 enemy_group = pygame.sprite.Group()
 slash_group = pygame.sprite.Group()
+arrow_group = pygame.sprite.Group()
 grenade_group = pygame.sprite.Group()
 explosion_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
@@ -729,6 +777,7 @@ while run:
 
         # update and draw groups
         slash_group.update()
+        arrow_group.update()
         grenade_group.update()
         explosion_group.update()
         item_box_group.update()
@@ -736,6 +785,7 @@ while run:
         water_group.update()
         exit_group.update()
         slash_group.draw(screen)
+        arrow_group.draw(screen)
         grenade_group.draw(screen)
         explosion_group.draw(screen)
         item_box_group.draw(screen)
@@ -767,6 +817,8 @@ while run:
                 player.update_action(2)  # 2: jump
             elif moving_left or moving_right:
                 player.update_action(1)  # 1: run
+            elif swing:
+                player.update_action(4) # swing
             else:
                 player.update_action(0)  # 0: idle
             screen_scroll, level_complete = player.move(moving_left, moving_right)
