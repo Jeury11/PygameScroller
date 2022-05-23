@@ -126,7 +126,7 @@ def reset_level():
     water_group.empty()
     exit_group.empty()
 
-    #vreate empty tile list
+    #create empty tile list
     data = []
     for row in range(ROWS):
         r = [-1] * COLS
@@ -393,9 +393,12 @@ class World():
                     elif tile >= 9 and tile <= 10:
                         water = Water(img, x * TILE_SIZE, y * TILE_SIZE)
                         water_group.add(water)
-                    elif tile >= 11 and tile <= 14:
+                    elif tile >= 11 and tile <= 13:
                         decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
                         decoration_group.add(decoration)
+                    elif tile == 14:#create boss
+                        boss = Character('Boss', x * TILE_SIZE, y * TILE_SIZE, 2.65, 2, 20, 0)
+                        boss_group.add(boss)
                     elif tile == 15:#create player
                         player = Character('Player', x * TILE_SIZE, y * TILE_SIZE, 1.65, 5, 20, 5)
                         health_bar = HealthBar(10, 10, player.health, player.health)
@@ -716,6 +719,7 @@ item_box_group = pygame.sprite.Group()
 decoration_group = pygame.sprite.Group()
 water_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
+boss_group = pygame.sprite.Group()
 
 
 
@@ -774,6 +778,11 @@ while run:
             enemy.ai()
             enemy.update()
             enemy.draw()
+
+        for boss in boss_group:
+            boss.ai()
+            boss.update()
+            boss.draw()
 
         # update and draw groups
         slash_group.update()
